@@ -44,6 +44,11 @@ P.S. You can delete this when you're done too. It's your config now :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- Settings
+-- autocmd! FileType help wincmd L
+vim.opt.cpoptions:append("x")
+
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    https://github.com/folke/lazy.nvim
 --    `:help lazy.nvim.txt` for more info
@@ -260,6 +265,20 @@ require('lazy').setup({
   -- require 'kickstart.plugins.autoformat',
   -- require 'kickstart.plugins.debug',
 
+  {
+    -- smooth scrolling
+    'karb94/neoscroll.nvim',
+    config = function ()
+      -- require('neoscroll').setup {}
+    end
+  },
+  {
+    'anuvyklack/help-vsplit.nvim',
+    config = function()
+      require('help-vsplit').setup()
+   end
+  },
+
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
   --    up-to-date with whatever is in the kickstart repo.
@@ -311,6 +330,10 @@ vim.o.completeopt = 'menuone,noselect'
 vim.o.termguicolors = true
 
 -- [[ Basic Keymaps ]]
+vim.keymap.set("i", "kj", "<Esc>", { noremap = true })
+vim.keymap.set("i", "jk", "<Esc>", { noremap = true })
+vim.keymap.set("n", "cw", "ciw", { noremap = true })
+vim.keymap.set("n", "yw", "yiw", { noremap = true })
 
 -- Keymaps for better default experience
 -- See `:help vim.keymap.set()`
@@ -388,6 +411,12 @@ local function live_grep_git_root()
 end
 
 vim.api.nvim_create_user_command('LiveGrepGitRoot', live_grep_git_root, {})
+
+-- Telescope custom
+vim.keymap.set('n', '<C-j>', ':bprev<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<C-k>', ':bnext<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', ';', ':Telescope find_files<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', 'rg', ':LiveGrepGitRoot<CR>', {noremap = true, silent = true})
 
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
@@ -636,15 +665,19 @@ cmp.setup {
       behavior = cmp.ConfirmBehavior.Replace,
       select = true,
     },
-    ['<Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_locally_jumpable() then
-        luasnip.expand_or_jump()
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
+    ['<Tab>'] = cmp.mapping.confirm {
+      behavior = cmp.ConfirmBehavior.Replace,
+      select = true,
+    },
+    -- ['<Tab>'] = cmp.mapping(function(fallback)
+    --   if cmp.visible() then
+    --     cmp.select_next_item()
+    --   elseif luasnip.expand_or_locally_jumpable() then
+    --     luasnip.expand_or_jump()
+    --   else
+    --     fallback()
+    --   end
+    -- end, { 'i', 's' }),
     ['<S-Tab>'] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_prev_item()
