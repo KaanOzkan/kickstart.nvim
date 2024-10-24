@@ -83,6 +83,32 @@ require('lazy').setup({
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
+  -- 'github/copilot.vim',
+
+  {
+    "christoomey/vim-tmux-navigator",
+    cmd = {
+      "TmuxNavigateLeft",
+      "TmuxNavigateDown",
+      "TmuxNavigateUp",
+      "TmuxNavigateRight",
+      "TmuxNavigatePrevious",
+    },
+    keys = {
+      { "<c-h>", "<cmd><C-U>TmuxNavigateLeft<cr>" },
+      { "<c-j>", "<cmd><C-U>TmuxNavigateDown<cr>" },
+      { "<c-k>", "<cmd><C-U>TmuxNavigateUp<cr>" },
+      { "<c-l>", "<cmd><C-U>TmuxNavigateRight<cr>" },
+      { "<c-\\>", "<cmd><C-U>TmuxNavigatePrevious<cr>" },
+    },
+  },
+
+  {
+    "ThePrimeagen/harpoon",
+    branch = "harpoon2",
+    dependencies = { "nvim-lua/plenary.nvim" }
+  },
+
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
   {
@@ -252,6 +278,22 @@ require('lazy').setup({
     },
   },
 
+  -- Fast fuzzy finder
+  {
+    "ibhagwan/fzf-lua",
+    -- optional for icon support
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    config = function()
+      -- calling `setup` is optional for customization
+      require("fzf-lua").setup({
+        grep = {
+          rg_opts = "--hidden --column --line-number --no-heading --color=always --smart-case " ..
+              "--glob '!*.rbi'",
+        }
+      })
+    end
+  },
+
   {
     -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
@@ -372,6 +414,18 @@ require('telescope').setup {
         ['<C-d>'] = false,
       },
     },
+    file_ignore_patterns = {
+      ".git/",
+      "log",
+      "tmp/",
+      "vendor/",
+      "node_modules/",
+    }
+  },
+  pickers = {
+    find_files = {
+      hidden = true
+    },
   },
 }
 
@@ -414,19 +468,58 @@ end
 
 vim.api.nvim_create_user_command('LiveGrepGitRoot', live_grep_git_root, {})
 
--- Telescope custom
-vim.keymap.set('n', '<C-h>', ':bprev<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', '<C-j>', ':bnext<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', '<C-l>', ':bd<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', ';', ':Telescope find_files<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', 'rg', ':LiveGrepGitRoot<CR>', {noremap = true, silent = true})
+
+-- Configure harpoon
+local harpoon = require("harpoon")
+harpoon:setup()
+
+local conf = require("telescope.config").values
+local function toggle_telescope(harpoon_files)
+  local file_paths = {}
+  for _, item in ipairs(harpoon_files.items) do
+    table.insert(file_paths, item.value)
+  end
+
+  require("telescope.pickers").new({}, {
+    prompt_title = "Harpoon",
+    finder = require("telescope.finders").new_table({
+      results = file_paths,
+    }),
+    previewer = conf.file_previewer({}),
+    sorter = conf.generic_sorter({}),
+  }):find()
+end
+
+-- Harpoon
+vim.keymap.set("n", "<C-a>", function() harpoon:list():add() end, {desc = "Harpoon add", noremap = true, silent = true})
+vim.keymap.set("n", "<C-f>", function() toggle_telescope(harpoon:list()) end, {desc = "Open harpoon window", noremap = true, silent = true})
+vim.keymap.set("n", "<C-j>", function() harpoon:list():select(1)  end, {desc = "Harpoon select 1", noremap = true, silent = true})
+vim.keymap.set("n", "<C-k>", function() harpoon:list():select(2)  end, {desc = "Harpoon select 2", noremap = true, silent = true})
+vim.keymap.set("n", "<C-l>", function() harpoon:list():select(3)  end, {desc = "Harpoon select 3", noremap = true, silent = true})
+vim.keymap.set("n", "<C-;>", function() harpoon:list():select(4)  end, {desc = "Harpoon select 4", noremap = true, silent = true})
+-- Toggle previous & next buffers stored within Harpoon list
+vim.keymap.set("n", "<C-S-P>", function() harpoon:list():prev() end)
+vim.keymap.set("n", "<C-S-N>", function() harpoon:list():next() end)
+
+-- Telescope custom keymaps
+vim.keymap.set('n', '<C-e>', ':bprev<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<C-w>', ':bnext<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<C-q>', ':bd<CR>', {noremap = true, silent = true})
+-- vim.keymap.set('n', ';', ':Telescope find_files<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', ';', require('fzf-lua').files, {desc = "Fzf files", noremap = true, silent = true})
+vim.keymap.set('n', '<leader>b', require('fzf-lua').buffers, {desc = "show buffers", noremap = true, silent = true})
+vim.keymap.set('n', 'rg', require('fzf-lua').grep_project, {desc = "grep all project lines", noremap = true, silent = true})
+-- vim.keymap.set('n', 'rg', ':LiveGrepGitRoot<CR>', {noremap = true, silent = true})
 vim.keymap.set('n', '<C-m>', ':Telescope keymaps<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<leader>sc', ':Telescope commands<CR>', {noremap = true, silent = true})
 
 -- Fugitive custom
 vim.keymap.set('n', '<leader>gs', ':Git<CR>', {desc = 'Git status', noremap = true, silent = true})
 vim.keymap.set('n', '<leader>gc', ':Git commit<CR>', {noremap = true, silent = true})
 vim.keymap.set('n', '<leader>gr', ':Git rebase -i<CR>', {noremap = true, silent = true})
 
+-- Copilot custom
+vim.api.nvim_set_keymap('i', '<C-j>', 'copilot#Accept("<CR>")', { silent = true, expr = true })
 
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
@@ -559,7 +652,7 @@ local on_attach = function(_, bufnr)
 
   -- See `:help K` for why this keymap
   nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
-  nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
+  -- nmap('<C-K>', vim.lsp.buf.signature_help, 'Signature Documentation')
 
   -- Lesser used LSP functionality
   nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
@@ -671,10 +764,10 @@ cmp.setup {
     ['<C-b>'] = cmp.mapping.scroll_docs(-4),
     ['<C-f>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete {},
-    ['<CR>'] = cmp.mapping.confirm {
-      behavior = cmp.ConfirmBehavior.Replace,
-      select = true,
-    },
+    -- ['<CR>'] = cmp.mapping.confirm {
+    --   behavior = cmp.ConfirmBehavior.Replace,
+    --   select = true,
+    -- },
     ['<Tab>'] = cmp.mapping.confirm {
       behavior = cmp.ConfirmBehavior.Replace,
       select = true,
