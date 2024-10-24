@@ -108,6 +108,15 @@ require('lazy').setup({
     branch = "harpoon2",
     dependencies = { "nvim-lua/plenary.nvim" }
   },
+  {
+    "letieu/harpoon-lualine",
+    dependencies = {
+      {
+        "ThePrimeagen/harpoon",
+        branch = "harpoon2",
+      }
+    },
+  },
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -473,30 +482,26 @@ vim.api.nvim_create_user_command('LiveGrepGitRoot', live_grep_git_root, {})
 local harpoon = require("harpoon")
 harpoon:setup()
 
-local conf = require("telescope.config").values
-local function toggle_telescope(harpoon_files)
-  local file_paths = {}
-  for _, item in ipairs(harpoon_files.items) do
-    table.insert(file_paths, item.value)
-  end
-
-  require("telescope.pickers").new({}, {
-    prompt_title = "Harpoon",
-    finder = require("telescope.finders").new_table({
-      results = file_paths,
-    }),
-    previewer = conf.file_previewer({}),
-    sorter = conf.generic_sorter({}),
-  }):find()
-end
+require("lualine").setup {
+  sections = {
+    lualine_x = {
+      {
+        "harpoon2",
+        indicators = { "j", "k", "l", "o" },
+        active_indicators = { "J", "K", "L", "O" },
+        _separator = " ",
+      }
+    },
+  },
+}
 
 -- Harpoon
-vim.keymap.set("n", "<C-a>", function() harpoon:list():add() end, {desc = "Harpoon add", noremap = true, silent = true})
-vim.keymap.set("n", "<C-f>", function() toggle_telescope(harpoon:list()) end, {desc = "Open harpoon window", noremap = true, silent = true})
+vim.keymap.set("n", "<C-a>", function() harpoon:list():add() end, {desc = "Harpoon add", noremap = true, silent = false})
+vim.keymap.set("n", "<C-s>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, {desc = "Open harpoon window", noremap = true, silent = true})
 vim.keymap.set("n", "<C-j>", function() harpoon:list():select(1)  end, {desc = "Harpoon select 1", noremap = true, silent = true})
 vim.keymap.set("n", "<C-k>", function() harpoon:list():select(2)  end, {desc = "Harpoon select 2", noremap = true, silent = true})
 vim.keymap.set("n", "<C-l>", function() harpoon:list():select(3)  end, {desc = "Harpoon select 3", noremap = true, silent = true})
-vim.keymap.set("n", "<C-;>", function() harpoon:list():select(4)  end, {desc = "Harpoon select 4", noremap = true, silent = true})
+vim.keymap.set("n", "<C-o>", function() harpoon:list():select(4)  end, {desc = "Harpoon select 4", noremap = true, silent = true})
 -- Toggle previous & next buffers stored within Harpoon list
 vim.keymap.set("n", "<C-S-P>", function() harpoon:list():prev() end)
 vim.keymap.set("n", "<C-S-N>", function() harpoon:list():next() end)
