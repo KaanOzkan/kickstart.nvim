@@ -47,6 +47,8 @@ vim.g.maplocalleader = ' '
 -- Settings
 -- autocmd! FileType help wincmd L
 vim.opt.cpoptions:append("x")
+vim.opt.scrolloff = 999
+vim.opt.shiftwidth = 2
 
 
 -- [[ Install `lazy.nvim` plugin manager ]]
@@ -80,6 +82,41 @@ require('lazy').setup({
 
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
+
+  -- 'github/copilot.vim',
+
+  {
+    "christoomey/vim-tmux-navigator",
+    cmd = {
+      "TmuxNavigateLeft",
+      "TmuxNavigateDown",
+      "TmuxNavigateUp",
+      "TmuxNavigateRight",
+      "TmuxNavigatePrevious",
+    },
+    keys = {
+      { "<c-h>", "<cmd><C-U>TmuxNavigateLeft<cr>" },
+      { "<c-j>", "<cmd><C-U>TmuxNavigateDown<cr>" },
+      { "<c-k>", "<cmd><C-U>TmuxNavigateUp<cr>" },
+      { "<c-l>", "<cmd><C-U>TmuxNavigateRight<cr>" },
+      { "<c-\\>", "<cmd><C-U>TmuxNavigatePrevious<cr>" },
+    },
+  },
+
+  {
+    "ThePrimeagen/harpoon",
+    branch = "harpoon2",
+    dependencies = { "nvim-lua/plenary.nvim" }
+  },
+  {
+    "letieu/harpoon-lualine",
+    dependencies = {
+      {
+        "ThePrimeagen/harpoon",
+        branch = "harpoon2",
+      }
+    },
+  },
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -250,6 +287,22 @@ require('lazy').setup({
     },
   },
 
+  -- Fast fuzzy finder
+  {
+    "ibhagwan/fzf-lua",
+    -- optional for icon support
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    config = function()
+      -- calling `setup` is optional for customization
+      require("fzf-lua").setup({
+        grep = {
+          rg_opts = "--hidden --column --line-number --no-heading --color=always --smart-case " ..
+              "--glob '!*.rbi'",
+        }
+      })
+    end
+  },
+
   {
     -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
@@ -360,6 +413,15 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
+-- [[ Save on focus lost ]]
+vim.api.nvim_create_autocmd('FocusLost', {
+  group = vim.api.nvim_create_augroup('FocusLostStuff', { clear = true }),
+  callback = function()
+    vim.cmd.stopinsert()
+    vim.cmd.wall { mods = { silent = true } }
+  end,
+})
+
 -- [[ Configure Telescope ]]
 -- See `:help telescope` and `:help telescope.setup()`
 require('telescope').setup {
@@ -369,6 +431,18 @@ require('telescope').setup {
         ['<C-u>'] = false,
         ['<C-d>'] = false,
       },
+    },
+    file_ignore_patterns = {
+      ".git/",
+      "log",
+      "tmp/",
+      "vendor/",
+      "node_modules/",
+    }
+  },
+  pickers = {
+    find_files = {
+      hidden = true
     },
   },
 }
@@ -412,11 +486,54 @@ end
 
 vim.api.nvim_create_user_command('LiveGrepGitRoot', live_grep_git_root, {})
 
--- Telescope custom
-vim.keymap.set('n', '<C-j>', ':bprev<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', '<C-k>', ':bnext<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', ';', ':Telescope find_files<CR>', {noremap = true, silent = true})
-vim.keymap.set('n', 'rg', ':LiveGrepGitRoot<CR>', {noremap = true, silent = true})
+
+-- Configure harpoon
+local harpoon = require("harpoon")
+harpoon:setup()
+
+require("lualine").setup {
+  sections = {
+    lualine_x = {
+      {
+        "harpoon2",
+        indicators = { "h", "j", "k", "l" },
+        active_indicators = { "H", "J", "K", "L" },
+        _separator = " ",
+      }
+    },
+  },
+}
+
+-- Harpoon
+vim.keymap.set("n", "<C-a>", function() harpoon:list():add() end, {desc = "Harpoon add", noremap = true, silent = false})
+vim.keymap.set("n", "<C-s>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, {desc = "Open harpoon window", noremap = true, silent = true})
+vim.keymap.set("n", "<C-h>", function() harpoon:list():select(1)  end, {desc = "Harpoon select 1", noremap = true, silent = true})
+vim.keymap.set("n", "<C-j>", function() harpoon:list():select(2)  end, {desc = "Harpoon select 2", noremap = true, silent = true})
+vim.keymap.set("n", "<C-k>", function() harpoon:list():select(3)  end, {desc = "Harpoon select 3", noremap = true, silent = true})
+vim.keymap.set("n", "<C-l>", function() harpoon:list():select(4)  end, {desc = "Harpoon select 4", noremap = true, silent = true})
+-- Toggle previous & next buffers stored within Harpoon list
+vim.keymap.set("n", "<C-S-P>", function() harpoon:list():prev() end)
+vim.keymap.set("n", "<C-S-N>", function() harpoon:list():next() end)
+
+-- Telescope custom keymaps
+vim.keymap.set('n', '<C-e>', ':bprev<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<C-w>', ':bnext<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<C-q>', ':bd<CR>', {noremap = true, silent = true})
+-- vim.keymap.set('n', ';', ':Telescope find_files<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', ';', require('fzf-lua').files, {desc = "Fzf files", noremap = true, silent = true})
+vim.keymap.set('n', '<leader>b', require('fzf-lua').buffers, {desc = "show buffers", noremap = true, silent = true})
+vim.keymap.set('n', 'rg', require('fzf-lua').grep_project, {desc = "grep all project lines", noremap = true, silent = true})
+-- vim.keymap.set('n', 'rg', ':LiveGrepGitRoot<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<C-m>', ':Telescope keymaps<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<leader>sc', ':Telescope commands<CR>', {noremap = true, silent = true})
+
+-- Fugitive custom
+vim.keymap.set('n', '<leader>gs', ':Git<CR>', {desc = 'Git status', noremap = true, silent = true})
+vim.keymap.set('n', '<leader>gc', ':Git commit<CR>', {noremap = true, silent = true})
+vim.keymap.set('n', '<leader>gr', ':Git rebase -i<CR>', {noremap = true, silent = true})
+
+-- Copilot custom
+vim.api.nvim_set_keymap('i', '<C-j>', 'copilot#Accept("<CR>")', { silent = true, expr = true })
 
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
@@ -549,7 +666,7 @@ local on_attach = function(_, bufnr)
 
   -- See `:help K` for why this keymap
   nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
-  nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
+  -- nmap('<C-K>', vim.lsp.buf.signature_help, 'Signature Documentation')
 
   -- Lesser used LSP functionality
   nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
@@ -614,6 +731,14 @@ local servers = {
   },
 }
 
+-- Extend ruby filetype
+vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"}, {
+    pattern = "*.rbi",
+    callback = function()
+        vim.opt.filetype = "ruby"
+    end
+})
+
 -- Setup neovim lua configuration
 require('neodev').setup()
 
@@ -661,10 +786,10 @@ cmp.setup {
     ['<C-b>'] = cmp.mapping.scroll_docs(-4),
     ['<C-f>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete {},
-    ['<CR>'] = cmp.mapping.confirm {
-      behavior = cmp.ConfirmBehavior.Replace,
-      select = true,
-    },
+    -- ['<CR>'] = cmp.mapping.confirm {
+    --   behavior = cmp.ConfirmBehavior.Replace,
+    --   select = true,
+    -- },
     ['<Tab>'] = cmp.mapping.confirm {
       behavior = cmp.ConfirmBehavior.Replace,
       select = true,
@@ -694,6 +819,55 @@ cmp.setup {
     { name = 'path' },
   },
 }
+
+-- textDocument/diagnostic support until 0.10.0 is released
+_timers = {}
+local function setup_diagnostics(client, buffer)
+  if require("vim.lsp.diagnostic")._enable then
+    return
+  end
+
+  local diagnostic_handler = function()
+    local params = vim.lsp.util.make_text_document_params(buffer)
+    client.request("textDocument/diagnostic", { textDocument = params }, function(err, result)
+      if err then
+        local err_msg = string.format("diagnostics error - %s", vim.inspect(err))
+        vim.lsp.log.error(err_msg)
+      end
+      local diagnostic_items = {}
+      if result then
+        diagnostic_items = result.items
+      end
+      vim.lsp.diagnostic.on_publish_diagnostics(
+        nil,
+        vim.tbl_extend("keep", params, { diagnostics = diagnostic_items }),
+        { client_id = client.id }
+      )
+    end)
+  end
+
+  diagnostic_handler() -- to request diagnostics on buffer when first attaching
+
+  vim.api.nvim_buf_attach(buffer, false, {
+    on_lines = function()
+      if _timers[buffer] then
+        vim.fn.timer_stop(_timers[buffer])
+      end
+      _timers[buffer] = vim.fn.timer_start(200, diagnostic_handler)
+    end,
+    on_detach = function()
+      if _timers[buffer] then
+        vim.fn.timer_stop(_timers[buffer])
+      end
+    end,
+  })
+end
+
+require("lspconfig").ruby_ls.setup({
+  on_attach = function(client, buffer)
+    setup_diagnostics(client, buffer)
+  end,
+})
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
