@@ -117,6 +117,11 @@ require('lazy').setup({
       }
     },
   },
+  {
+    "windwp/nvim-autopairs",
+    event = "InsertEnter",
+    config = true
+  },
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -238,6 +243,39 @@ require('lazy').setup({
     config = function()
       vim.cmd.colorscheme 'onedark'
     end,
+  },
+  {
+    'ellisonleao/gruvbox.nvim',
+    priority = 1000,
+    config = true,
+    opts = ...
+  },
+
+  {
+    'zaldih/themery.nvim',
+    lazy = false;
+    config = function()
+      require("themery").setup({
+        themes = {
+          "onedark", "desert", "morning", "retrobox", "sorbet", "vim", "quiet",
+          {
+            name = "Gruvbox dark",
+            colorscheme = "gruvbox",
+            before = [[
+              vim.opt.background = "dark"
+            ]],
+          },
+          {
+            name = "Gruvbox light",
+            colorscheme = "gruvbox",
+            before = [[
+              vim.opt.background = "light"
+            ]],
+          },
+        },
+        livePreview = true,
+    })
+    end
   },
 
   {
@@ -503,7 +541,9 @@ require("lualine").setup {
     },
   },
 }
-
+-- Insert
+-- Map Ctrl-f to move the cursor one character to the right in insert mode
+vim.keymap.set('i', '<C-f>', '<Right>', { noremap = true, silent = true })
 -- Harpoon
 vim.keymap.set("n", "<C-a>", function() harpoon:list():add() end, {desc = "Harpoon add", noremap = true, silent = false})
 vim.keymap.set("n", "<C-s>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, {desc = "Open harpoon window", noremap = true, silent = true})
@@ -533,7 +573,10 @@ vim.keymap.set('n', '<leader>gc', ':Git commit<CR>', {noremap = true, silent = t
 vim.keymap.set('n', '<leader>gr', ':Git rebase -i<CR>', {noremap = true, silent = true})
 
 -- Copilot custom
-vim.api.nvim_set_keymap('i', '<C-j>', 'copilot#Accept("<CR>")', { silent = true, expr = true })
+vim.keymap.set('i', '<C-j>', 'copilot#Accept("<CR>")', { silent = true, expr = true })
+
+-- Themery
+vim.keymap.set('n', '<leader>p', ':Themery<CR>', {desc = 'Themery', noremap = true, silent = true})
 
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
@@ -714,12 +757,27 @@ require('mason-lspconfig').setup()
 --  If you want to override the default filetypes that your language server will attach to you can
 --  define the property 'filetypes' to the map in question.
 local servers = {
-  -- clangd = {},
   -- gopls = {},
   -- pyright = {},
   -- rust_analyzer = {},
   -- tsserver = {},
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
+
+  clangd = {
+    Cpp = {
+      cmd = {
+        "clangd",
+        "--background-index",
+        -- by default, clang-tidy use -checks=clang-diagnostic-*,clang-analyzer-*
+        -- to add more checks, create .clang-tidy file in the root directory
+        -- and add Checks key, see https://clang.llvm.org/extra/clang-tidy/
+        "--clang-tidy",
+        "--completion-style=bundled",
+        "--cross-file-rename",
+        "--header-insertion=iwyu",
+      }
+    }
+  },
 
   lua_ls = {
     Lua = {
@@ -784,7 +842,7 @@ cmp.setup {
     ['<C-n>'] = cmp.mapping.select_next_item(),
     ['<C-p>'] = cmp.mapping.select_prev_item(),
     ['<C-b>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
+    -- ['<C-f>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete {},
     -- ['<CR>'] = cmp.mapping.confirm {
     --   behavior = cmp.ConfirmBehavior.Replace,
