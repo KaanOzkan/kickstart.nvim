@@ -925,7 +925,12 @@ require("lspconfig").ruby_ls.setup({
   on_attach = function(client, buffer)
     setup_diagnostics(client, buffer)
   end,
+  init_options = {
+    enabledFeatureFlags = { ["tapiocaAddon"] = true }
+  }
 })
+
+vim.lsp.set_log_level("INFO")
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
